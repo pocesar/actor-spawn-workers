@@ -61,7 +61,8 @@
             "default": 2,
             "prefill": 2,
             "example": 2,
-            "type": "number"
+            "type": "integer",
+            "editor": "number"
         }
     },
     "required": [
