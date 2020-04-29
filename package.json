@@ -1,0 +1,23 @@
+{
+	"name": "actor-spawn-workers",
+	"version": "0.1.0",
+	"description": "Split work through multiple actors",
+	"dependencies": {
+		"apify": "^0.20.3"
+	},
+	"devDependencies": {
+		"@apify/eslint-config": "0.0.3",
+		"eslint": "^6.8.0"
+	},
+	"scripts": {
+		"start": "node src/main.js",
+		"lint": "eslint ./src --ext .js,.jsx",
+		"lint:fix": "eslint ./src --ext .js,.jsx --fix",
+		"test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+	},
+	"author": {
+		"name": "Paulo Cesar",
+		"url": "https://github.com/pocesar"
+	},
+	"license": "Apache-2.0"
+}

@@ -1,0 +1,70 @@
+{
+    "title": "Spawn workers",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "inputUrlsDatasetId": {
+            "title": "Dataset ID",
+            "description": "The dataset id containing RequestQueue-like items",
+            "example": "yNYAWYvSUruAvbzWh",
+            "type": "string",
+            "editor": "textfield"
+        },
+        "outputDatasetId": {
+            "title": "Output dataset",
+            "description": "Optionally pass an output dataset name where all workers can push items",
+            "example": "output-dataset-2020",
+            "type": "string",
+            "editor": "textfield"
+        },
+        "workerActorId": {
+            "title": "Actor Id",
+            "description": "Provide the actor id",
+            "example": "apify/web-scraper",
+            "type": "string",
+            "editor": "textfield"
+        },
+        "workerTaskId": {
+            "title": "Task Id",
+            "description": "Provide the task id instead of actor id",
+            "example": "apify/web-scraper",
+            "type": "string",
+            "editor": "textfield"
+        },
+        "workerInput": {
+            "title": "Actor / Task input",
+            "description": "Additional input to pass to the tasks / actors",
+            "default": {},
+            "example": {
+                "maxConcurrency": 50
+            },
+            "prefill": {},
+            "type": "object",
+            "editor": "json"
+        },
+        "workerOptions": {
+            "title": "Actor / Task options",
+            "description": "Options to pass to the tasks / actors",
+            "default": {},
+            "example": {
+                "build": "0.0.22",
+                "memoryMbytes": 128,
+                "timeoutSecs": 600
+            },
+            "prefill": {},
+            "type": "object",
+            "editor": "json"
+        },
+        "workerCount": {
+            "title": "Worker count",
+            "description": "How many instances should be spawned",
+            "default": 2,
+            "prefill": 2,
+            "example": 2,
+            "type": "number"
+        }
+    },
+    "required": [
+        "inputUrlsDatasetId"
+    ]
+}

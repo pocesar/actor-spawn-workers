@@ -1,0 +1,8 @@
+{
+	"name": "actor-spawn-workers",
+	"version": "0.0",
+	"buildTag": "latest",
+	"env": {
+	},
+	"template": "apify_project"
+}
