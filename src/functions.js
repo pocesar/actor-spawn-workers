@@ -1,4 +1,5 @@
 const Apify = require('apify');
+
 const { log } = Apify.utils;
 
 /**
@@ -8,20 +9,20 @@ const { log } = Apify.utils;
  * @param {string} actId The unique ID of the actor
  */
 const awaitRun = (runId, actId) => {
-  return new Promise((resolve) => {
-      const timeout = async () => {
-          const { status, defaultDatasetId } = await Apify.client.acts.getRun({ actId, runId });
+    return new Promise((resolve) => {
+        const timeout = async () => {
+            const { status, defaultDatasetId } = await Apify.client.acts.getRun({ actId, runId });
 
-          if (!['RUNNING', 'READY'].includes(status)) {
-              resolve({ status, runId, actId, defaultDatasetId });
-          } else {
-              setTimeout(timeout, 10000);
-          }
-      }
+            if (!['RUNNING', 'READY'].includes(status)) {
+                resolve({ status, runId, actId, defaultDatasetId });
+            } else {
+                setTimeout(timeout, 10000);
+            }
+        };
 
-      timeout();
-  });
-}
+        timeout();
+    });
+};
 
 exports.awaitRun = awaitRun;
 
@@ -31,10 +32,10 @@ exports.awaitRun = awaitRun;
 * @param {string[]} ids
 */
 const sumDatasets = async (ids) => {
-  return (await Promise.all(
-      ids.map(datasetId => Apify.client.datasets.getDataset({ datasetId }).then(s => s.cleanItemCount))
-  )).reduce((o, i) => (o + i), 0);
-}
+    return (await Promise.all(
+        ids.map(datasetId => Apify.client.datasets.getDataset({ datasetId }).then(s => s.cleanItemCount)),
+    )).reduce((o, i) => (o + i), 0);
+};
 
 exports.sumDatasets = sumDatasets;
 
@@ -45,7 +46,7 @@ exports.sumDatasets = sumDatasets;
  * @param {string} actId
  */
 const awaitRuns = async (runIds, actId) => {
-    log.info(`Waiting for runs to finish`, { runIds, actId });
+    log.info('Waiting for runs to finish', { runIds, actId });
     const statuses = await Promise.all(runIds.map(runId => awaitRun(runId, actId)));
     log.info('Runs finished', { statuses });
 

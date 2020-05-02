@@ -65,8 +65,6 @@ Apify.main(async () => {
     // sum of all default datasets on each worker
     datasetsItemsCount
   } = output.body;
-
-
 });
 ```
 
@@ -76,11 +74,11 @@ const Apify = require('apify');
 
 Apify.main(async () => {
   const {
-    limit,
-    offset,
+    limit,  // every worker receives a "batch"
+    offset, // that changes depending on how many were spawned
     inputDatasetId,
     outputDatasetId,
-    myConfig
+    ...myConfig // any other configuration you passed through workerInput
   } = await Apify.getInput();
 
   const requestDataset = await Apify.openDataset(inputDatasetId);

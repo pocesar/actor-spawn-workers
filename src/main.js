@@ -1,8 +1,9 @@
 const Apify = require('apify');
+
 const { log } = Apify.utils;
 const {
     sumDatasets,
-    awaitRuns
+    awaitRuns,
 } = require('./functions');
 
 Apify.main(async () => {
@@ -24,7 +25,7 @@ Apify.main(async () => {
         // Workers additional options
         workerOptions = {},
         // How many to launch
-        workerCount = 2
+        workerCount = 2,
     } = input;
 
     if (!inputUrlsDatasetId) {
@@ -61,9 +62,9 @@ Apify.main(async () => {
     log.info(`Total URLs size in dataset: ${urlsCount}`);
 
     const outputDataset = await Apify.openDataset(outputDatasetId || defaultDatasetId, { forceCloud: true });
-    const { id, cleanItemCount } = (await outputDataset.getInfo()).id;
+    const { id, cleanItemCount } = await outputDataset.getInfo();
 
-    log.info(`Output`, { id, cleanItemCount });
+    log.info('Output', { id, cleanItemCount });
 
     let offset = 0;
     const batchSize = Math.ceil(urlsCount / workerCount);
@@ -85,12 +86,12 @@ Apify.main(async () => {
 
             offset += batchSize;
 
-            log.debug(`Start `, { payload, offset });
+            log.debug('Start ', { payload, offset });
 
             const worker = await Apify[workerActorId ? 'call' : 'callTask'](
                 workerActorId || workerTaskId,
                 payload,
-                { ...(workerOptions || {}), waitSecs: 0 }
+                { ...(workerOptions || {}), waitSecs: 0 },
             );
 
             workers.push(worker);
@@ -102,7 +103,7 @@ Apify.main(async () => {
     log.info('Awaiting workers', { workers });
 
     const statuses = await awaitRuns(workers.map(run => run.id), workerActorId);
-    const datasetsItemsCount = await sumDatasets(statuses.map((s) => s.defaultDatasetId));
+    const datasetsItemsCount = await sumDatasets(statuses.map(s => s.defaultDatasetId));
 
     await Apify.setValue('OUTPUT', {
         workers,
