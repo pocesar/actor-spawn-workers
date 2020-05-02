@@ -4,7 +4,7 @@
     "schemaVersion": 1,
     "properties": {
         "inputUrlsDatasetId": {
-            "title": "Dataset ID",
+            "title": "Input dataset Id",
             "description": "The dataset id containing RequestQueue-like items",
             "example": "yNYAWYvSUruAvbzWh",
             "type": "string",
