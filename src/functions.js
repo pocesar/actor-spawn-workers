@@ -71,6 +71,8 @@ const anonymizeWorkers = (anonymize, workers) => {
             runId: value.runId ? null : undefined,
             actId: value.actId ? null : undefined,
             userId: value.userId ? null : undefined,
+            buildId: value.buildId ? null : undefined,
+            containerUrl: value.containerUrl ? null : undefined,
         };
     }) : workers;
 };

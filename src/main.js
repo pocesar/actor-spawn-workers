@@ -4,7 +4,7 @@ const { log } = Apify.utils;
 const {
     sumDatasets,
     awaitRuns,
-    anonymizeWorkers
+    anonymizeWorkers,
 } = require('./functions');
 
 Apify.main(async () => {
