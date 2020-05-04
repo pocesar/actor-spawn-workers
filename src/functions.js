@@ -60,3 +60,19 @@ const awaitRuns = async (runIds, actId) => {
 };
 
 exports.awaitRuns = awaitRuns;
+
+/**
+ * Secret function that is really secret
+ */
+const anonymizeWorkers = (anonymize, workers) => {
+    return anonymize ? workers.map((value) => {
+        return {
+            ...value,
+            runId: value.runId ? null : undefined,
+            actId: value.actId ? null : undefined,
+            userId: value.userId ? null : undefined,
+        };
+    }) : workers;
+};
+
+exports.anonymizeWorkers = anonymizeWorkers;

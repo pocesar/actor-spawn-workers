@@ -4,6 +4,7 @@ const { log } = Apify.utils;
 const {
     sumDatasets,
     awaitRuns,
+    anonymizeWorkers
 } = require('./functions');
 
 Apify.main(async () => {
@@ -98,7 +99,7 @@ Apify.main(async () => {
 
             workers.push(worker);
 
-            await Apify.setValue('WORKERS', workers);
+            await Apify.setValue('WORKERS', anonymizeWorkers(anonymize, workers));
         }
     }
 
@@ -108,8 +109,8 @@ Apify.main(async () => {
     const datasetsItemsCount = await sumDatasets(statuses.map(s => s.defaultDatasetId));
 
     await Apify.setValue('OUTPUT', {
-        workers: (anonymize ? workers.map(worker => ({ ...worker, buildId: 'X', runId: 'X', actId: 'X', userId: 'X' })) : workers).map((s) => {
-            const lateStatus = statuses.find(status => status.runId === s.runId);
+        workers: anonymizeWorkers(anonymize, workers).map((s) => {
+            const lateStatus = statuses.find(status => status.runId === s.id);
 
             return {
                 ...s,
