@@ -11,10 +11,10 @@ const { log } = Apify.utils;
 const awaitRun = (runId, actId) => {
     return new Promise((resolve) => {
         const timeout = async () => {
-            const { status, defaultDatasetId } = await Apify.client.acts.getRun({ actId, runId });
+            const { status, defaultDatasetId, finishedAt } = await Apify.client.acts.getRun({ actId, runId });
 
             if (!['RUNNING', 'READY'].includes(status)) {
-                resolve({ status, runId, actId, defaultDatasetId });
+                resolve({ status, runId, actId, defaultDatasetId, finishedAt });
             } else {
                 setTimeout(timeout, 10000);
             }

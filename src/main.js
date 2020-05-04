@@ -26,6 +26,7 @@ Apify.main(async () => {
         workerOptions = {},
         // How many to launch
         workerCount = 2,
+        anonymize = false,
     } = input;
 
     if (!inputUrlsDatasetId) {
@@ -82,6 +83,7 @@ Apify.main(async () => {
                 limit: batchSize,
                 inputDatasetId: inputUrlsDatasetId,
                 outputDatasetId,
+                workerId: i,
             };
 
             offset += batchSize;
@@ -106,7 +108,15 @@ Apify.main(async () => {
     const datasetsItemsCount = await sumDatasets(statuses.map(s => s.defaultDatasetId));
 
     await Apify.setValue('OUTPUT', {
-        workers,
+        workers: (anonymize ? workers.map(worker => ({ ...worker, buildId: 'X', runId: 'X', actId: 'X', userId: 'X' })) : workers).map((s) => {
+            const lateStatus = statuses.find(status => status.runId === s.runId);
+
+            return {
+                ...s,
+                finishedAt: lateStatus.finishedAt,
+                status: lateStatus.status,
+            };
+        }),
         datasetsItemsCount,
         outputDatasetId: id,
     });

@@ -113,6 +113,16 @@ RequestQueue is the best way to process requests cross actors, but it doesn't of
 
 By using the dataset, you have the same functionality (sans the ability to deduplicate the URLs) that can be safely shared and partitioned to many actors at once. Each worker will be dealing with their own subset of URLs, with no overlapping.
 
+## Limitations
+
+Don't use the following keys for `workerInput` as they will be overwritten:
+
+* offset
+* limit
+* inputDatasetId
+* outputDatasetId
+* workerId
+
 ## License
 
 Apache 2.0
