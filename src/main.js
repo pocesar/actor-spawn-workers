@@ -27,6 +27,7 @@ Apify.main(async () => {
         workerOptions = {},
         // How many to launch
         workerCount = 2,
+        parentRunId = null,
         anonymize = false,
     } = input;
 
@@ -80,6 +81,7 @@ Apify.main(async () => {
         for (let i = 1; i <= workerCount; i++) {
             const payload = {
                 ...(workerInput || {}),
+                parentRunId,
                 offset,
                 limit: batchSize,
                 inputDatasetId: inputUrlsDatasetId,

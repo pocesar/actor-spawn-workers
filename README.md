@@ -54,7 +54,9 @@ Apify.main(async () => {
       memoryMbytes: 256
     },
     // Number of workers
-    workerCount: 2
+    workerCount: 2,
+    // Parent run ID, so you can persist things related to this actor call
+    parentRunId: Apify.getEnv().actorRunId
   });
 
   const {
@@ -78,6 +80,7 @@ Apify.main(async () => {
     offset, // that changes depending on how many were spawned
     inputDatasetId,
     outputDatasetId,
+    parentRunId,
     ...myConfig // any other configuration you passed through workerInput
   } = await Apify.getInput();
 
@@ -86,6 +89,7 @@ Apify.main(async () => {
       offset, limit,
   });
 
+  const aNamedDataset = await Apify.openDataset(`MY-NAMED-DATASET-${parentRunId}`);
   const outputDataset = await Apify.openDataset(outputDatasetId);
   const requestList = await Apify.openRequestList('URLS', items); // load all the urls at once in memory
 
@@ -122,6 +126,7 @@ Don't use the following keys for `workerInput` as they will be overwritten:
 * inputDatasetId
 * outputDatasetId
 * workerId
+* parentRunId
 
 ## License
 

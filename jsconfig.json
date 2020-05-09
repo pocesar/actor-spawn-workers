@@ -7,7 +7,7 @@
     "checkJs": true,
     "noUnusedParameters": true,
     "noUnusedLocals": true,
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "lib": [
       "dom",
       "es2020.string",
