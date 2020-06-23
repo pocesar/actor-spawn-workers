@@ -1,20 +1,22 @@
 {
-  "compilerOptions": {
-    "module": "commonJS",
-    "target": "es2018",
-    "moduleResolution": "node",
-    "strict": true,
-    "checkJs": true,
-    "noUnusedParameters": true,
-    "noUnusedLocals": true,
-    "strictNullChecks": true,
-    "lib": [
-      "dom",
-      "es2020.string",
-      "es2018.asynciterable",
+    "compilerOptions": {
+        "module": "commonJS",
+        "target": "es2018",
+        "moduleResolution": "node",
+        "strict": true,
+        "checkJs": true,
+        "noUnusedParameters": true,
+        "noUnusedLocals": true,
+        "strictNullChecks": true,
+        "lib": [
+            "es2015",
+            "es2016",
+            "dom",
+            "es2020.string",
+            "es2018.asynciterable",
+        ]
+    },
+    "include": [
+        "./src/*.js"
     ]
-  },
-  "include": [
-    "./src/*.js"
-  ]
 }
