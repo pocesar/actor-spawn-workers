@@ -102,6 +102,8 @@ Apify.main(async () => {
             workers.push(worker);
 
             await Apify.setValue('WORKERS', anonymizeWorkers(anonymize, workers));
+
+            await Apify.utils.sleep(1000 * workerCount);
         }
     }
 

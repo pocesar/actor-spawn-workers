@@ -1,13 +1,13 @@
 {
 	"name": "actor-spawn-workers",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "Split work through multiple actors",
 	"dependencies": {
-		"apify": "^0.21.0"
+		"apify": "^0.21.6"
 	},
 	"devDependencies": {
-		"@apify/eslint-config": "^0.1.0",
-		"eslint": "^7.3.1"
+		"@apify/eslint-config": "^0.1.2",
+		"eslint": "^7.10.0"
 	},
 	"scripts": {
 		"start": "node src/main.js",
