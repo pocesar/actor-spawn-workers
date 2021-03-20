@@ -33,7 +33,7 @@ exports.awaitRun = awaitRun;
 */
 const sumDatasets = async (ids) => {
     return (await Promise.all(
-        ids.map(datasetId => Apify.client.datasets.getDataset({ datasetId }).then(s => s.cleanItemCount)),
+        ids.map((datasetId) => Apify.client.datasets.getDataset({ datasetId }).then((s) => s.cleanItemCount)),
     )).reduce((o, i) => (o + i), 0);
 };
 
@@ -47,7 +47,7 @@ exports.sumDatasets = sumDatasets;
  */
 const awaitRuns = async (runIds, actId) => {
     log.info('Waiting for runs to finish', { runIds, actId });
-    const statuses = await Promise.all(runIds.map(runId => awaitRun(runId, actId)));
+    const statuses = await Promise.all(runIds.map((runId) => awaitRun(runId, actId)));
     log.info('Runs finished', { statuses });
 
     for (const s of statuses) {
@@ -60,21 +60,3 @@ const awaitRuns = async (runIds, actId) => {
 };
 
 exports.awaitRuns = awaitRuns;
-
-/**
- * Secret function that is really secret
- */
-const anonymizeWorkers = (anonymize, workers) => {
-    return anonymize ? workers.map((value) => {
-        return {
-            ...value,
-            runId: value.runId ? null : undefined,
-            actId: value.actId ? null : undefined,
-            userId: value.userId ? null : undefined,
-            buildId: value.buildId ? null : undefined,
-            containerUrl: value.containerUrl ? null : undefined,
-        };
-    }) : workers;
-};
-
-exports.anonymizeWorkers = anonymizeWorkers;

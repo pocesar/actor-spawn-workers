@@ -4,7 +4,6 @@ const { log } = Apify.utils;
 const {
     sumDatasets,
     awaitRuns,
-    anonymizeWorkers,
 } = require('./functions');
 
 Apify.main(async () => {
@@ -28,7 +27,6 @@ Apify.main(async () => {
         // How many to launch
         workerCount = 2,
         parentRunId = null,
-        anonymize = false,
     } = input;
 
     if (!inputUrlsDatasetId) {
@@ -57,20 +55,25 @@ Apify.main(async () => {
 
     const dataset = await Apify.openDataset(inputUrlsDatasetId, { forceCloud: true });
     const { cleanItemCount: urlsCount } = await dataset.getInfo();
-
-    if (!urlsCount) {
-        throw new Error(`The provided dataset "${inputUrlsDatasetId}" doesn't have any items`);
-    }
-
-    log.info(`Total URLs size in dataset: ${urlsCount}`);
-
-    const outputDataset = await Apify.openDataset(outputDatasetId || defaultDatasetId, { forceCloud: true });
-    const { id, cleanItemCount } = await outputDataset.getInfo();
-
-    log.info('Output', { id, cleanItemCount });
-
+    const usingOtherSource = urlsCount.length === 0;
+    let batchSize = 0;
     let offset = 0;
-    const batchSize = Math.ceil(urlsCount / workerCount);
+    let id = '';
+
+    if (!usingOtherSource) {
+        log.warning(`The provided dataset "${inputUrlsDatasetId}" doesn't have any items`);
+    } else {
+        log.info(`Total URLs size in dataset: ${urlsCount}`);
+
+        const outputDataset = await Apify.openDataset(outputDatasetId || defaultDatasetId, { forceCloud: true });
+        const { id: datasetId, cleanItemCount } = await outputDataset.getInfo();
+
+        id = datasetId;
+
+        log.info('Output', { id, cleanItemCount });
+
+        batchSize = Math.ceil(urlsCount / workerCount);
+    }
 
     /**
      * @type {any[]}
@@ -85,8 +88,9 @@ Apify.main(async () => {
                 offset,
                 limit: batchSize,
                 inputDatasetId: inputUrlsDatasetId,
-                outputDatasetId,
+                outputDatasetId: id,
                 workerId: i,
+                usingOtherSource,
             };
 
             offset += batchSize;
@@ -101,7 +105,7 @@ Apify.main(async () => {
 
             workers.push(worker);
 
-            await Apify.setValue('WORKERS', anonymizeWorkers(anonymize, workers));
+            await Apify.setValue('WORKERS', workers);
 
             await Apify.utils.sleep(1000 * workerCount);
         }
@@ -109,12 +113,12 @@ Apify.main(async () => {
 
     log.info('Awaiting workers', { workers });
 
-    const statuses = await awaitRuns(workers.map(run => run.id), workerActorId);
-    const datasetsItemsCount = await sumDatasets(statuses.map(s => s.defaultDatasetId));
+    const statuses = await awaitRuns(workers.map((run) => run.id), workerActorId);
+    const datasetsItemsCount = await sumDatasets(statuses.map((s) => s.defaultDatasetId));
 
     await Apify.setValue('OUTPUT', {
-        workers: anonymizeWorkers(anonymize, workers).map((s) => {
-            const lateStatus = statuses.find(status => status.runId === s.id);
+        workers: workers.map((s) => {
+            const lateStatus = statuses.find((status) => status.runId === s.id);
 
             return {
                 ...s,
