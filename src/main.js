@@ -1,15 +1,10 @@
 const Apify = require('apify');
 
-const { log } = Apify.utils;
-const {
-    sumDatasets,
-    awaitRuns,
-} = require('./functions');
+const { log, sleep } = Apify.utils;
 
 Apify.main(async () => {
+    /** @type {any} */
     const input = await Apify.getInput();
-
-    const { defaultDatasetId } = Apify.getEnv();
 
     const {
         // Same requestQueue.addRequest format
@@ -27,10 +22,17 @@ Apify.main(async () => {
         // How many to launch
         workerCount = 2,
         parentRunId = null,
+        abortOthers = true,
+        fireAndForget = false,
+        token,
     } = input;
 
     if (!inputUrlsDatasetId) {
-        throw new Error('Missing "inputDatasetId"');
+        throw new Error('Missing "inputUrlsDatasetId"');
+    }
+
+    if (fireAndForget && abortOthers) {
+        throw new Error('Can\'t set "fireAndForget" and "abortOthers" at the same time');
     }
 
     if (!workerActorId && !workerTaskId) {
@@ -49,86 +51,110 @@ Apify.main(async () => {
         throw new Error('Parameter "workerOptions" must be an object');
     }
 
-    if (workerCount < 2) {
+    if (!+workerCount || +workerCount < 2) {
         throw new Error('Parameter "workerCount" must be 2 or higher');
     }
 
-    const dataset = await Apify.openDataset(inputUrlsDatasetId, { forceCloud: true });
-    const { cleanItemCount: urlsCount } = await dataset.getInfo();
-    const usingOtherSource = urlsCount.length === 0;
-    let batchSize = 0;
-    let offset = 0;
-    let id = '';
+    const client = Apify.newClient({
+        token,
+    });
 
-    if (!usingOtherSource) {
+    const actorId = await (workerTaskId ? client.task(workerTaskId) : client.actor(workerActorId)).get().then((s) => s.id);
+
+    if (!actorId) {
+        throw new Error(`${workerTaskId ? `Task ${workerTaskId}` : `Actor ${workerActorId}`} was not found`);
+    }
+
+    const dataset = await client.datasets().getOrCreate(inputUrlsDatasetId);
+    const { id: inputDatasetId, cleanItemCount: urlsCount } = await client.dataset(dataset.id).get();
+    const emptyDataset = urlsCount.length === 0;
+
+    const outputDataset = await client.datasets().getOrCreate(outputDatasetId || Apify.getEnv().defaultDatasetId);
+    const { id: newOutputDatasetId } = await client.dataset(outputDataset.id).get();
+    const batchSize = !emptyDataset ? Math.ceil(urlsCount / workerCount) : 1;
+
+    if (emptyDataset) {
         log.warning(`The provided dataset "${inputUrlsDatasetId}" doesn't have any items`);
     } else {
         log.info(`Total URLs size in dataset: ${urlsCount}`);
-
-        const outputDataset = await Apify.openDataset(outputDatasetId || defaultDatasetId, { forceCloud: true });
-        const { id: datasetId, cleanItemCount } = await outputDataset.getInfo();
-
-        id = datasetId;
-
-        log.info('Output', { id, cleanItemCount });
-
-        batchSize = Math.ceil(urlsCount / workerCount);
     }
 
     /**
-     * @type {any[]}
+     * @type {Map<number, Apify.ActorRun>}
      */
-    const workers = (await Apify.getValue('WORKERS')) || [];
+    const workers = new Map((await Apify.getValue('OUTPUT')) || []);
 
-    if (workers.length === 0) {
-        for (let i = 1; i <= workerCount; i++) {
+    const persistState = async () => {
+        await Apify.setValue('OUTPUT', [...workers.entries()]);
+    };
+
+    if (workers.size < workerCount) {
+        for (let i = workers.size; i < workerCount; i++) {
+            const offset = i * batchSize;
             const payload = {
                 ...(workerInput || {}),
                 parentRunId,
                 offset,
                 limit: batchSize,
-                inputDatasetId: inputUrlsDatasetId,
-                outputDatasetId: id,
-                workerId: i,
-                usingOtherSource,
+                inputDatasetId,
+                outputDatasetId: newOutputDatasetId,
+                workerId: i + 1,
+                emptyDataset,
+                isWorker: true,
             };
-
-            offset += batchSize;
 
             log.debug('Start ', { payload, offset });
 
             const worker = await Apify[workerActorId ? 'call' : 'callTask'](
                 workerActorId || workerTaskId,
                 payload,
-                { ...(workerOptions || {}), waitSecs: 0 },
+                { ...(workerOptions || {}), waitSecs: 1 },
             );
 
-            workers.push(worker);
+            workers.set(i, worker);
 
-            await Apify.setValue('WORKERS', workers);
-
-            await Apify.utils.sleep(1000 * workerCount);
+            await persistState();
+            await sleep(400 * workerCount);
         }
     }
 
-    log.info('Awaiting workers', { workers });
+    await persistState();
 
-    const statuses = await awaitRuns(workers.map((run) => run.id), workerActorId);
-    const datasetsItemsCount = await sumDatasets(statuses.map((s) => s.defaultDatasetId));
+    try {
+        if (!fireAndForget) {
+            log.info('Awaiting workers', { workers: [...workers.values()] });
 
-    await Apify.setValue('OUTPUT', {
-        workers: workers.map((s) => {
-            const lateStatus = statuses.find((status) => status.runId === s.id);
+            await Promise.all(
+                [...workers.values()].map(async (run) => {
+                    const { status } = await client.run(run.id).waitForFinish();
+                    if (status !== 'SUCCEEDED') {
+                        const newError = new Error(status);
+                        newError.run = run;
+                        throw newError;
+                    }
+                }),
+            );
+        }
+    } catch (e) {
+        log.exception(e, `${e.run ? `Run ${e.run.id} failed` : 'A run failed'}`);
 
-            return {
-                ...s,
-                finishedAt: lateStatus.finishedAt,
-                status: lateStatus.status,
-            };
-        }),
-        datasetsItemsCount,
-        outputDatasetId: id,
-    });
+        if (abortOthers) {
+            log.warning('Aborting other workers...');
+
+            for (const worker of workers.values()) {
+                try {
+                    const { status } = await client.run(worker.id).abort();
+                    if (status.startsWith('ABORT')) {
+                        log.warning(`Aborted ${worker.id}`);
+                    }
+                } catch (ee) {
+                    log.exception(ee, 'Failed aborting worker', { worker });
+                }
+            }
+        }
+
+        process.exit(1);
+    }
 
     log.info('Done');
 });

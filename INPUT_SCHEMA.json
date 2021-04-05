@@ -63,9 +63,26 @@
             "example": 2,
             "type": "integer",
             "editor": "number"
+        },
+        "abortOthers": {
+            "title": "Abort on failure",
+            "description": "Abort other runs if any of them fail",
+            "default": true,
+            "editor": "checkbox",
+            "type": "boolean"
+        },
+        "fireAndForget": {
+            "title": "Fire and forget",
+            "description": "Start the workers and don't keep track of their completion. The run information will still be available in the OUTPUT",
+            "default": false,
+            "editor": "checkbox",
+            "type": "boolean"
+        },
+        "token": {
+            "title": "Token",
+            "description": "Use another account token",
+            "editor": "textfield",
+            "type": "string"
         }
-    },
-    "required": [
-        "inputUrlsDatasetId"
-    ]
+    }
 }

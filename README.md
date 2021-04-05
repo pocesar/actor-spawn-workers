@@ -5,109 +5,98 @@ This actor lets you spawn tasks or other actors in parallel on the Apify platfor
 ## Usage
 
 ```js
-// Request dataset actor
-const Apify = require('apify');
+const Apify = require("apify");
 
 Apify.main(async () => {
-  const requestList = await Apify.openRequestList('start-urls', [
-    //... your requests here
-  ]);
+    const input = await Apify.getInput();
 
-  const crawler = new Apify.CheerioCrawler({
-    requestList,
-    handlePageFunction: async ({ $, request }) => {
+    const {
+        limit, // every worker receives a "batch"
+        offset, // that changes depending on how many were spawned
+        inputDatasetId,
+        outputDatasetId,
+        parentRunId,
+        isWorker,
+        emptyDataset, // means the inputDatasetId is empty, and you should use another source, like the Key Value store
+        ...rest // any other configuration you passed through workerInput
+    } = input;
 
-      // instead of requestQueue.addRequest, you push the URLs to the dataset
-      await Apify.pushData({
-        url: $('select stuff').attr('href'),
-        userData: {
-          label: $('select other stuff').data('rest')
+    // don't mix requestList with requestQueue
+    // when in worker mode
+    const requestList = new Apify.RequestList({
+        persistRequestsKey: 'START-URLS',
+        sourcesFunction: async () => {
+            if (!isWorker) {
+                return [
+                    {
+                        "url": "https://start-url..."
+                    }
+                ]
+            }
+
+            const requestDataset = await Apify.openDataset(inputDatasetId);
+
+            const { items } = await requestDataset.getData({
+                offset,
+                limit,
+            });
+
+            return items;
         }
-      });
+    });
 
-    },
-  });
+    await requestList.initialize();
 
-  await crawler.run();
+    const requestQueue = isWorker ? undefined : await Apify.openRequestQueue();
+    const outputDataset = isWorker ? await Apify.openDataset(outputDatasetId) : undefined;
 
-  const { defaultDatasetId } = Apify.getEnv();
+    const crawler = new Apify.CheerioCrawler({
+        requestList,
+        requestQueue,
+        handlePageFunction: async ({ $, request }) => {
+            if (isWorker) {
+                // scrape details here
+                await outputDataset.pushData({ ...data });
+            } else {
+                // instead of requestQueue.addRequest, you push the URLs to the dataset
+                await Apify.pushData({
+                    url: $("select stuff").attr("href"),
+                    userData: {
+                        label: $("select other stuff").data("rest"),
+                    },
+                });
+            }
+        },
+    });
 
-  const { output } = await Apify.call('pocesar/spawn-workers', {
-    // if you omit this, the default dataset on the spawn-workers actor will hold all items
-    outputDatasetId: 'some-named-dataset',
-    // use this actor default dataset as input for the workers requests
-    inputUrlsDatasetId: defaultDatasetId,
-    // the name or ID of your worker actor (the one below)
-    workerActorId: 'youracount/actor-worker',
-    // you can use a task instead
-    workerTaskId: 'acc/task',
-    // Optionally pass input to the actors / tasks
-    workerInput: {
-      maxConcurrency: 20,
-      mode: 1,
-      myConfig: {
-        some: 'config'
-      }
-    },
-    // Optional worker options
-    workerOptions: {
-      memoryMbytes: 256
-    },
-    // Number of workers
-    workerCount: 2,
-    // Parent run ID, so you can persist things related to this actor call
-    parentRunId: Apify.getEnv().actorRunId
-  });
+    await crawler.run();
 
-  const {
-    // contains all workers "ActorRuns"
-    workers,
-    // access to the outputDataset
-    outputDatasetId,
-    // sum of all default datasets on each worker
-    datasetsItemsCount
-  } = output.body;
-});
-```
-
-```js
-// Worker code
-const Apify = require('apify');
-
-Apify.main(async () => {
-  const {
-    limit,  // every worker receives a "batch"
-    offset, // that changes depending on how many were spawned
-    inputDatasetId,
-    outputDatasetId,
-    parentRunId,
-    ...myConfig // any other configuration you passed through workerInput
-  } = await Apify.getInput();
-
-  const requestDataset = await Apify.openDataset(inputDatasetId);
-  const { items } = await requestDataset.getData({
-      offset, limit,
-  });
-
-  const aNamedDataset = await Apify.openDataset(`MY-NAMED-DATASET-${parentRunId}`);
-  const outputDataset = await Apify.openDataset(outputDatasetId);
-  const requestList = await Apify.openRequestList('URLS', items); // load all the urls at once in memory
-
-  const crawler = new Apify.CheerioCrawler({
-    requestList,
-    handlePageFunction: async ({ $, request }) => {
-
-      // or you can use Apify.pushData() to push to the default dataset
-      await outputDataset.pushData({
-        url: request.url,
-        data: $('script[type="application/ld+json"]').html()
-      });
-
-    },
-    /*...*/
-  });
-
-  //...
+    if (!isWorker) {
+        const { output } = await Apify.call("pocesar/spawn-workers", {
+            // if you omit this, the default dataset on the spawn-workers actor will hold all items
+            outputDatasetId: "some-named-dataset",
+            // use this actor default dataset as input for the workers requests, usually should be this own dataset ID
+            inputUrlsDatasetId: Apify.getEnv().defaultDatasetId,
+            // the name or ID of your worker actor (the one below)
+            workerActorId: Apify.getEnv().actorId,
+            // you can use a task instead
+            workerTaskId: Apify.getEnv().actorTaskId,
+            // Optionally pass input to the actors / tasks
+            workerInput: {
+                maxConcurrency: 20,
+                mode: 1,
+                some: "config",
+            },
+            // Optional worker options
+            workerOptions: {
+                memoryMbytes: 256,
+            },
+            // Number of workers
+            workerCount: 2,
+            // Parent run ID, so you can persist things related to this actor call in a centralized manner
+            parentRunId: Apify.getEnv().actorRunId,
+        });
+    }
 });
 ```
 
@@ -121,15 +110,15 @@ By using the dataset, you have the same functionality (sans the ability to dedup
 
 Don't use the following keys for `workerInput` as they will be overwritten:
 
-* offset
-* limit
-* inputDatasetId
-* outputDatasetId
-* workerId
-* parentRunId
+-   offset: number
+-   limit: number
+-   inputDatasetId: string
+-   outputDatasetId: string
+-   workerId: number
+-   parentRunId: string
+-   isWorker: boolean
+-   emptyDataset: boolean
 
 ## License
 
 Apache 2.0
-
-
